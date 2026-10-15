@@ -128,14 +128,8 @@ func updateSubnet(s store.Store) http.HandlerFunc {
 			writeError(w, http.StatusNotFound, "not_found", "Subnet not found")
 			return
 		}
-		if req.Name != "" {
-			if err := s.RenameSubnet(r.Context(), token, id, req.Name); err != nil {
-				writeError(w, http.StatusInternalServerError, "internal_error", err.Error())
-				return
-			}
-			sub.Name = req.Name
-		}
-		if req.CIDRBlock != "" && req.CIDRBlock != sub.CIDRBlock {
+		cidrChanged := req.CIDRBlock != "" && req.CIDRBlock != sub.CIDRBlock
+		if cidrChanged {
 			_, newNetwork, parseErr := net.ParseCIDR(req.CIDRBlock)
 			if parseErr != nil {
 				writeError(w, http.StatusBadRequest, "bad_request", "invalid cidr_block")
@@ -153,6 +147,15 @@ func updateSubnet(s store.Store) http.HandlerFunc {
 					return
 				}
 			}
+		}
+		if req.Name != "" {
+			if err := s.RenameSubnet(r.Context(), token, id, req.Name); err != nil {
+				writeError(w, http.StatusInternalServerError, "internal_error", err.Error())
+				return
+			}
+			sub.Name = req.Name
+		}
+		if cidrChanged {
 			if err := s.UpdateSubnetCIDR(r.Context(), token, id, req.CIDRBlock); err != nil {
 				writeError(w, http.StatusInternalServerError, "internal_error", err.Error())
 				return
